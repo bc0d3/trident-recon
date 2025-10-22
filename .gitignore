@@ -1,0 +1,62 @@
+# Binaries
+trident-recon
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Coverage
+*.cover
+coverage.txt
+coverage.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+
+# Config (user-specific) - Don't commit actual configs
+config.yaml
+*.local
+
+# Output directories - Don't commit scan results
+trident-output/
+output/
+scans/
+results/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts - GoReleaser output
+dist/
+
+# Debug
+debug
+__debug_bin
+
+# Project summary (internal doc)
+PROJECT_SUMMARY.md

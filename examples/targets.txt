@@ -1,0 +1,11 @@
+# Example targets file
+# Add one target per line
+# Lines starting with # are ignored
+
+http://testphp.vulnweb.com
+http://testhtml5.vulnweb.com
+http://testasp.vulnweb.com
+
+# Add your targets here
+# https://example1.com
+# https://example2.com
