@@ -123,7 +123,20 @@ func runForTarget(cfg *config.Config, target, stateDir string) error {
 		return fmt.Errorf("failed to write markdown: %w", err)
 	}
 
-	utils.PrintSuccess(fmt.Sprintf("Commands saved to: %s", mdPath))
+	utils.PrintSuccess(fmt.Sprintf("Markdown saved to: %s", mdPath))
+
+	// Generate plain text commands
+	txtGen := generator.PlainTextGenerator{
+		Sessions: sessions,
+	}
+
+	plainText := txtGen.Generate()
+	txtPath := filepath.Join(outDir, "commands.txt")
+	if err := utils.WriteFile(txtPath, plainText); err != nil {
+		return fmt.Errorf("failed to write plain text commands: %w", err)
+	}
+
+	utils.PrintSuccess(fmt.Sprintf("Plain text commands saved to: %s", txtPath))
 	fmt.Println()
 
 	// Execute sessions
@@ -145,12 +158,13 @@ func runForTarget(cfg *config.Config, target, stateDir string) error {
 	utils.PrintSuccess(fmt.Sprintf("Successfully started %d/%d sessions", successful, len(sessions)))
 	fmt.Println()
 	fmt.Println("📋 Session Management:")
-	fmt.Println("   List sessions:   trident-recon list")
-	fmt.Println("   Attach to session: tmux attach -t <session-name>")
-	fmt.Println("   Kill all sessions: trident-recon kill-all")
+	fmt.Println("   List sessions:      trident-recon list")
+	fmt.Println("   Attach to session:  tmux attach -t <session-name>")
+	fmt.Println("   Kill all sessions:  trident-recon kill-all")
 	fmt.Println()
-	fmt.Printf("📁 Output directory: %s\n", outDir)
-	fmt.Printf("📄 Commands file: %s\n", mdPath)
+	fmt.Printf("📁 Output directory:           %s\n", outDir)
+	fmt.Printf("📄 Markdown file:              %s\n", mdPath)
+	fmt.Printf("📄 Commands file (copy-paste): %s\n", txtPath)
 
 	return nil
 }

@@ -1,7 +1,7 @@
 package config
 
 // DefaultConfig returns a default configuration template
-const DefaultConfig = `# Trident Recon Configuration File
+const DefaultConfig = `# Trident Recon Configuration File - OPTIMIZED FOR BUG BOUNTY 2025
 # Save this at ~/.config/trident-recon/config.yaml
 
 global:
@@ -10,211 +10,274 @@ global:
 
 headers:
   default:
-    User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+    User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     Accept: "*/*"
+    Accept-Language: "en-US,en;q=0.9"
+    Accept-Encoding: "gzip, deflate"
   custom:
     - "X-Bug-Bounty: true"
 
 wordlists:
   common: /usr/share/wordlists/dirb/common.txt
   big: /usr/share/wordlists/dirb/big.txt
-  raft-small: /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt
-  raft-medium: /usr/share/seclists/Discovery/Web-Content/raft-medium-words.txt
-  raft-large: /usr/share/seclists/Discovery/Web-Content/raft-large-words.txt
+  raft-small-words: /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt
+  raft-small-dirs: /usr/share/seclists/Discovery/Web-Content/raft-small-directories.txt
+  raft-medium-words: /usr/share/seclists/Discovery/Web-Content/raft-medium-words.txt
+  raft-medium-dirs: /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt
+  raft-medium-files: /usr/share/seclists/Discovery/Web-Content/raft-medium-files.txt
+  raft-large-dirs: /usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt
+  raft-large-files: /usr/share/seclists/Discovery/Web-Content/raft-large-files.txt
+  quickhits: /usr/share/seclists/Discovery/Web-Content/quickhits.txt
   php: /usr/share/seclists/Discovery/Web-Content/Common-PHP-Filenames.txt
-  asp: /usr/share/seclists/Discovery/Web-Content/Common-ASP-Filenames.txt
   api: /usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt
+  api-v2: /usr/share/seclists/Discovery/Web-Content/api/api-endpoints-res.txt
   params: /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt
+  swagger: /usr/share/seclists/Discovery/Web-Content/swagger.txt
+  graphql: /usr/share/seclists/Discovery/Web-Content/graphql.txt
+  subdomain-top5000: /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt
+  subdomain-top20000: /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt
+  vhosts: /usr/share/seclists/Discovery/DNS/namelist.txt
+  backups: /usr/share/seclists/Discovery/Web-Content/backup-files.txt
 
 tools:
   ffuf:
     enabled: true
     tmux_prefix: "ffuf_"
     commands:
+      - name: "quickhits"
+        description: "Fast initial scan with quickhits wordlist"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-quickhits.json -of json -ac"
+        wordlist: quickhits
+
       - name: "content-discovery"
-        description: "Content discovery with common wordlist"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-content.json -of json -t 40"
-        wordlist: common
+        description: "Content discovery with intelligent filtering"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404,403 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-content.json -of json -t 100 -rate 200 -ac -recursion -recursion-depth 2"
+        wordlist: raft-medium-dirs
 
       - name: "content-discovery-big"
-        description: "Content discovery with big wordlist"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -t 40"
-        wordlist: big
+        description: "Extensive content discovery with large wordlist"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -t 80 -rate 150 -ac"
+        wordlist: raft-large-dirs
 
-      - name: "php-files"
-        description: "PHP file fuzzing"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-php.json -of json -t 40"
-        wordlist: php
+      - name: "multi-extension-scan"
+        description: "Multi-extension file discovery"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old,.zip,.tar.gz,.sql,.db,.config,.env,.log -o {OUTPUT_DIR}/ffuf-{DOMAIN}-extensions.json -of json -t 100 -rate 200"
+        wordlist: raft-medium-files
 
-      - name: "asp-files"
-        description: "ASP file fuzzing"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-asp.json -of json -t 40"
-        wordlist: asp
+      - name: "sensitive-files"
+        description: "Search for sensitive files and backups"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -e .bak,.backup,.old,.swp,~,.git,.env,.sql,.db,.config,.log -o {OUTPUT_DIR}/ffuf-{DOMAIN}-sensitive.json -of json -t 100"
+        wordlist: backups
 
       - name: "api-endpoints"
-        description: "API endpoint discovery"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json -t 40"
+        description: "API endpoint discovery with versioning"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -H 'Content-Type: application/json' -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json"
         wordlist: api
 
-      - name: "recursive-scan"
-        description: "Recursive directory discovery"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc 200,204,301,302,307,401,403 -recursion -recursion-depth 2 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-recursive.json -of json -t 40"
+      - name: "swagger-graphql"
+        description: "Search for API documentation endpoints"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-apidocs.json -of json"
+        wordlist: swagger
+
+      - name: "parameter-fuzzing"
+        description: "GET parameter fuzzing"
+        command: "ffuf -u {URL}?FUZZ=test -w {WORDLIST} -mc all -fc 404 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-params.json -of json"
+        wordlist: params
+
+      - name: "vhost-enumeration"
+        description: "Virtual host enumeration"
+        command: "ffuf -u {URL} -w {WORDLIST} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhosts.json -of json"
+        wordlist: subdomain-top5000
+
+      - name: "recursive-deep"
+        description: "Deep recursive scan with auto-calibration"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -recursion -recursion-depth 3 -e .php,.html,.js -t 80 -rate 150 -ac -o {OUTPUT_DIR}/ffuf-{DOMAIN}-deep.json -of json"
+        wordlist: raft-medium-words
+
+      - name: "bypass-403"
+        description: "Attempt to bypass 403 forbidden responses"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -t 100 -H 'X-Original-URL: /FUZZ' -H 'X-Rewrite-URL: /FUZZ' -o {OUTPUT_DIR}/ffuf-{DOMAIN}-403bypass.json -of json"
         wordlist: common
 
   gobuster:
     enabled: true
     tmux_prefix: "gobuster_"
     commands:
-      - name: "dir-enum"
-        description: "Directory enumeration with gobuster"
-        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-dirs.txt -t 40 -k"
-        wordlist: common
+      - name: "dir-enum-fast"
+        description: "Fast directory enumeration"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-dirs.txt -t 100 -k -e -q --no-error -s '200,204,301,302,307,401,403'"
+        wordlist: raft-medium-dirs
+
+      - name: "dir-enum-extensions"
+        description: "Directory enumeration with multiple extensions"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -x php,asp,aspx,jsp,html,js,txt,json,xml,bak,zip,tar.gz,sql -o {OUTPUT_DIR}/gobuster-{DOMAIN}-ext.txt -t 100 -k -e -q --no-error"
+        wordlist: raft-medium-files
 
       - name: "dir-enum-big"
-        description: "Directory enumeration with big wordlist"
-        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-big.txt -t 40 -k"
-        wordlist: big
+        description: "Extensive directory enumeration"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-big.txt -t 80 -k -e -q --no-error -x php,html,txt"
+        wordlist: raft-large-dirs
+
+      - name: "api-endpoints"
+        description: "API endpoint enumeration"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-api.txt -t 100 -k -e -q --no-error -x json,xml"
+        wordlist: api
 
       - name: "vhost-enum"
         description: "Virtual host enumeration"
-        command: "gobuster vhost -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-vhosts.txt -t 40 -k"
-        wordlist: raft-small
+        command: "gobuster vhost -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-vhosts.txt -t 100 -k --append-domain -r"
+        wordlist: subdomain-top5000
+
+      - name: "dns-enum"
+        description: "DNS subdomain enumeration"
+        command: "gobuster dns -d {DOMAIN} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-dns.txt -t 100"
+        wordlist: subdomain-top20000
+
+      - name: "sensitive-files"
+        description: "Search for sensitive files"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -x bak,backup,old,swp,env,git,sql,db,config,log -o {OUTPUT_DIR}/gobuster-{DOMAIN}-sensitive.txt -t 100 -k -e -q"
+        wordlist: backups
+
+      - name: "bypass-filtering"
+        description: "Attempt bypass with custom patterns"
+        command: "gobuster dir -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/gobuster-{DOMAIN}-bypass.txt -t 100 -k -e -q --no-error -H 'X-Original-URL: /' -H 'X-Rewrite-URL: /'"
+        wordlist: common
 
   dirsearch:
     enabled: true
     tmux_prefix: "dirsearch_"
     commands:
       - name: "default-scan"
-        description: "Default dirsearch scan"
-        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-default.txt -t 40"
-        wordlist: common
+        description: "Default fast scan with common wordlist"
+        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-default.txt -t 100 --random-agent -i 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-dirs
 
       - name: "recursive-scan"
-        description: "Recursive dirsearch scan"
-        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-recursive.txt -t 40 -R 2"
+        description: "Recursive directory scanning"
+        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-recursive.txt -t 100 -R 2 --random-agent -i 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-dirs
+
+      - name: "deep-recursive"
+        description: "Deep recursive scan (finds more endpoints)"
+        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-deep.txt -t 80 --deep-recursive --random-agent -i 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-words
+
+      - name: "multi-extension"
+        description: "Scan with multiple important extensions"
+        command: "dirsearch -u {URL} -w {WORDLIST} -e php,asp,aspx,jsp,html,js,txt,json,xml,yml,yaml,bak,old,zip,tar.gz,sql,db,config,env,log -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-multi-ext.txt -t 100 --random-agent -q"
+        wordlist: raft-medium-files
+
+      - name: "backup-files"
+        description: "Search for backup and sensitive files"
+        command: "dirsearch -u {URL} -w {WORDLIST} -e bak,backup,old,swp,save,copy,orig,tmp,~ -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-backups.txt -t 100 --random-agent --suffixes=~ --prefixes=. -q"
+        wordlist: backups
+
+      - name: "api-scan"
+        description: "API endpoint discovery"
+        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-api.txt -t 100 --random-agent -i 200,201,204,301,302,401,403 -q"
+        wordlist: api
+
+      - name: "config-files"
+        description: "Search for configuration files"
+        command: "dirsearch -u {URL} -w {WORDLIST} -e config,conf,cfg,ini,env,xml,yml,yaml,json,properties -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-configs.txt -t 100 --random-agent -q"
         wordlist: common
+
+      - name: "large-scan"
+        description: "Comprehensive scan with large wordlist"
+        command: "dirsearch -u {URL} -w {WORDLIST} -e php,html,txt,js,json -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-large.txt -t 80 --random-agent -R 1 -q"
+        wordlist: raft-large-dirs
+
+      - name: "exclude-sizes"
+        description: "Scan excluding common false positive sizes"
+        command: "dirsearch -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/dirsearch-{DOMAIN}-filtered.txt -t 100 --random-agent --exclude-sizes=0B -q"
+        wordlist: raft-medium-dirs
 
   feroxbuster:
     enabled: true
     tmux_prefix: "feroxbuster_"
     commands:
-      - name: "default-scan"
-        description: "Default feroxbuster scan"
-        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-default.txt -t 40 -k"
-        wordlist: common
+      - name: "fast-scan"
+        description: "Fast scan with auto-tune"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-fast.txt -t 100 -k --auto-tune -s 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-dirs
 
       - name: "recursive-scan"
-        description: "Recursive feroxbuster scan"
-        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-recursive.txt -t 40 -k --depth 2"
+        description: "Recursive scan with intelligent depth"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-recursive.txt -t 100 -k -d 2 --auto-tune -s 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-dirs
+
+      - name: "deep-recursive"
+        description: "Deep recursive scan with word collection"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-deep.txt -t 80 -k -d 3 --auto-tune --collect-words --extract-links -s 200,204,301,302,307,401,403 -q"
+        wordlist: raft-medium-words
+
+      - name: "extensions-scan"
+        description: "Scan with multiple extensions"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -x php,asp,aspx,jsp,html,js,txt,json,xml,yml,bak,old -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-ext.txt -t 100 -k --auto-tune -q"
+        wordlist: raft-medium-files
+
+      - name: "backup-discovery"
+        description: "Discover backup files automatically"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-backups.txt -t 100 -k --collect-backups --auto-tune -s 200,204,301,302,401,403 -q"
         wordlist: common
 
-  httpx:
+      - name: "smart-scan"
+        description: "Smart scan with link extraction and word collection"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-smart.txt -t 100 -k -d 2 --auto-tune --collect-words --extract-links --collect-backups -q"
+        wordlist: raft-medium-dirs
+
+      - name: "large-scan"
+        description: "Comprehensive scan with large wordlist"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-large.txt -t 80 -k -d 2 --auto-tune --rate-limit 200 -q"
+        wordlist: raft-large-dirs
+
+      - name: "filtered-scan"
+        description: "Scan with intelligent size filtering"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-filtered.txt -t 100 -k --auto-tune --filter-size 0 -C 404 -q"
+        wordlist: raft-medium-dirs
+
+      - name: "api-scan"
+        description: "API endpoint discovery"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -x json,xml -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-api.txt -t 100 -k --auto-tune -s 200,201,204,401,403 -q"
+        wordlist: api
+
+      - name: "thorough-scan"
+        description: "Thorough scan for maximum coverage"
+        command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-thorough.txt -t 80 -k -d 3 --auto-tune --collect-words --extract-links --collect-backups --rate-limit 150 -x php,html,js,txt,json,xml,bak,old -q"
+        wordlist: raft-large-files
+
+  gowitness:
     enabled: true
-    tmux_prefix: "httpx_"
+    tmux_prefix: "gowitness_"
     commands:
-      - name: "probe"
-        description: "HTTP probe with httpx"
-        command: "echo {URL} | httpx -o {OUTPUT_DIR}/httpx-{DOMAIN}-probe.txt -json -title -tech-detect -status-code"
+      - name: "single-url"
+        description: "Screenshot single URL with full page capture"
+        command: "gowitness scan single --url {URL} --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png --screenshot-fullpage --write-db --timeout 15"
         wordlist: ""
 
-      - name: "full-scan"
-        description: "Full httpx scan with all features"
-        command: "echo {URL} | httpx -o {OUTPUT_DIR}/httpx-{DOMAIN}-full.txt -json -title -tech-detect -status-code -follow-redirects -screenshot -system-chrome"
+      - name: "multi-urls"
+        description: "Screenshot multiple URLs from domain list"
+        command: "gowitness file -f {DOMAIN_LIST} --threads 10 --write-db --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png --timeout 15"
         wordlist: ""
+        use_domain_list: true
 
-  nuclei:
-    enabled: true
-    tmux_prefix: "nuclei_"
-    commands:
-      - name: "default-scan"
-        description: "Default nuclei scan"
-        command: "nuclei -u {URL} -o {OUTPUT_DIR}/nuclei-{DOMAIN}-default.txt -severity critical,high,medium"
+      - name: "multi-urls-fullpage"
+        description: "Screenshot multiple URLs with full page and error logging"
+        command: "gowitness file -f {DOMAIN_LIST} --threads 20 --timeout 15 --write-db --screenshot-fullpage --log-scan-errors --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png"
         wordlist: ""
+        use_domain_list: true
 
-      - name: "full-scan"
-        description: "Full nuclei scan with all templates"
-        command: "nuclei -u {URL} -o {OUTPUT_DIR}/nuclei-{DOMAIN}-full.txt -severity critical,high,medium,low,info"
-        wordlist: ""
-
-      - name: "cves"
-        description: "CVE scanning with nuclei"
-        command: "nuclei -u {URL} -o {OUTPUT_DIR}/nuclei-{DOMAIN}-cves.txt -tags cve"
-        wordlist: ""
-
-  arjun:
-    enabled: true
-    tmux_prefix: "arjun_"
-    commands:
-      - name: "param-discovery"
-        description: "Parameter discovery with arjun"
-        command: "arjun -u {URL} -o {OUTPUT_DIR}/arjun-{DOMAIN}-params.json -oJ"
-        wordlist: ""
-
-  katana:
-    enabled: true
-    tmux_prefix: "katana_"
-    commands:
-      - name: "crawl"
-        description: "Web crawling with katana"
-        command: "katana -u {URL} -o {OUTPUT_DIR}/katana-{DOMAIN}-crawl.txt -d 3 -jc -kf all"
-        wordlist: ""
-
-      - name: "js-crawl"
-        description: "JavaScript crawling with katana"
-        command: "katana -u {URL} -o {OUTPUT_DIR}/katana-{DOMAIN}-js.txt -jc -kf all -ef css,png,jpg,jpeg,gif,svg"
-        wordlist: ""
-
-  waybackurls:
-    enabled: true
-    tmux_prefix: "wayback_"
-    commands:
-      - name: "fetch-urls"
-        description: "Fetch URLs from Wayback Machine"
-        command: "echo {DOMAIN} | waybackurls > {OUTPUT_DIR}/waybackurls-{DOMAIN}.txt"
-        wordlist: ""
-
-  gau:
-    enabled: true
-    tmux_prefix: "gau_"
-    commands:
-      - name: "fetch-urls"
-        description: "Fetch URLs with gau"
-        command: "echo {DOMAIN} | gau --o {OUTPUT_DIR}/gau-{DOMAIN}.txt"
-        wordlist: ""
-
-  gospider:
-    enabled: true
-    tmux_prefix: "gospider_"
-    commands:
-      - name: "crawl"
-        description: "Web crawling with gospider"
-        command: "gospider -s {URL} -o {OUTPUT_DIR}/gospider-{DOMAIN} -c 10 -d 3"
-        wordlist: ""
-
-  hakrawler:
-    enabled: true
-    tmux_prefix: "hakrawler_"
-    commands:
-      - name: "crawl"
-        description: "Web crawling with hakrawler"
-        command: "echo {URL} | hakrawler -d 3 > {OUTPUT_DIR}/hakrawler-{DOMAIN}.txt"
-        wordlist: ""
-
-  dalfox:
-    enabled: false
-    tmux_prefix: "dalfox_"
-    commands:
-      - name: "xss-scan"
-        description: "XSS scanning with dalfox"
-        command: "dalfox url {URL} -o {OUTPUT_DIR}/dalfox-{DOMAIN}.txt"
-        wordlist: ""
-
-  sqlmap:
-    enabled: false
-    tmux_prefix: "sqlmap_"
-    commands:
-      - name: "sqli-scan"
-        description: "SQL injection scan with sqlmap"
-        command: "sqlmap -u {URL} --batch --output-dir={OUTPUT_DIR}/sqlmap-{DOMAIN}"
-        wordlist: ""
+# Notes:
+# - Todos los comandos incluyen rate limiting o thread control para evitar bloqueos
+# - Se usa auto-calibration (-ac en ffuf) y auto-tune (en feroxbuster) cuando es posible
+# - Los comandos de ffuf usan -mc all -fc 404 para capturar todos los códigos excepto 404
+# - Se incluyen búsquedas específicas para APIs, backups, y archivos sensibles
+# - Los comandos recursivos tienen profundidad limitada (2-3) para eficiencia
+# - Se usan random-agent en dirsearch para evitar detección
+# - Gobuster usa -k para skip SSL verification, útil en pruebas internas
+# - Feroxbuster usa --collect-words y --extract-links para descubrimiento inteligente
+# - Se incluyen extensiones críticas: .env, .git, .bak, .sql, .db, .config
+# - Los outputs están en formato JSON cuando es posible para parsing automatizado
+# - Gowitness soporta screenshots con --screenshot-fullpage y --write-db
+# - Para múltiples URLs, usar -l flag y gowitness usará {DOMAIN_LIST}
 `

@@ -11,9 +11,10 @@ import (
 
 // Generator handles command generation
 type Generator struct {
-	Config    *config.Config
-	Target    string
-	OutputDir string
+	Config         *config.Config
+	Target         string
+	OutputDir      string
+	DomainListFile string
 }
 
 // New creates a new generator
@@ -23,6 +24,11 @@ func New(cfg *config.Config, target, outputDir string) *Generator {
 		Target:    target,
 		OutputDir: outputDir,
 	}
+}
+
+// SetDomainListFile sets the domain list file path
+func (g *Generator) SetDomainListFile(path string) {
+	g.DomainListFile = path
 }
 
 // Generate generates all commands for enabled tools
@@ -75,12 +81,13 @@ func (g *Generator) generateSession(toolName string, toolConfig config.ToolConfi
 
 	// Create replacements
 	replacements := Replacements{
-		URL:       url,
-		Domain:    domain,
-		Protocol:  protocol,
-		Wordlist:  wordlist,
-		OutputDir: g.OutputDir,
-		ID:        id,
+		URL:        url,
+		Domain:     domain,
+		Protocol:   protocol,
+		Wordlist:   wordlist,
+		OutputDir:  g.OutputDir,
+		ID:         id,
+		DomainList: g.DomainListFile,
 	}
 
 	// Replace template variables

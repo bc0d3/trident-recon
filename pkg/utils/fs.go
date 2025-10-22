@@ -61,6 +61,18 @@ func WriteFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
+// WriteLines writes lines to a file (one line per string)
+func WriteLines(path string, lines []string) error {
+	// Ensure parent directory exists
+	dir := filepath.Dir(path)
+	if err := EnsureDir(dir); err != nil {
+		return err
+	}
+
+	content := strings.Join(lines, "\n") + "\n"
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
 // GenerateOutputDir generates a timestamped output directory name
 func GenerateOutputDir(baseDir, domain string) string {
 	timestamp := time.Now().Format("20060102_150405")

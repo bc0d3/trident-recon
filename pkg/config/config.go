@@ -37,10 +37,11 @@ type ToolConfig struct {
 
 // CommandTemplate represents a command template
 type CommandTemplate struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Command     string `yaml:"command"`
-	Wordlist    string `yaml:"wordlist"`
+	Name           string `yaml:"name"`
+	Description    string `yaml:"description"`
+	Command        string `yaml:"command"`
+	Wordlist       string `yaml:"wordlist"`
+	UseDomainList  bool   `yaml:"use_domain_list"`
 }
 
 // Load reads and parses the config file

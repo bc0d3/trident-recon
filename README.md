@@ -9,12 +9,14 @@ A powerful bug bounty tool orchestrator that automates reconnaissance workflows 
 
 ## Features
 
-- 🎯 **Multi-tool support**: ffuf, gobuster, dirsearch, nuclei, httpx, and more
+- 🎯 **Multi-tool support**: ffuf, gobuster, dirsearch, feroxbuster, gowitness, and more
 - 🔧 **Highly configurable**: YAML-based configuration for easy customization
-- 📋 **Command generation**: Generate copy-pasteable commands in markdown format
-- ⚡ **Batch processing**: Process multiple targets from a file
+- 📋 **Dual output formats**: Generates both detailed markdown AND plain text commands for easy copy-paste
+- ⚡ **Batch processing**: Process multiple targets from a file with automatic domain list generation
 - 🎮 **Session management**: Easy tmux session management and monitoring
 - 📊 **Organized output**: Clean directory structure with detailed logs
+- 🖼️ **Screenshot support**: Integrated gowitness for visual reconnaissance
+- 📝 **Copy-paste ready**: Plain text commands.txt file for instant execution
 
 ## Installation
 
@@ -98,16 +100,16 @@ trident-recon run -u http://testphp.vulnweb.com
 
 ### Basic Commands
 ```bash
-# Generate commands only (creates commands.md)
+# Generate commands only (creates commands.md AND commands.txt)
 trident-recon generate -u http://example.com
 
-# Execute commands in tmux
+# Execute commands in tmux sessions
 trident-recon run -u http://example.com
 
 # Specify output directory
 trident-recon run -u http://example.com -o ~/scans/target1
 
-# Process multiple targets
+# Process multiple targets (auto-creates domains.txt for tools like gowitness)
 trident-recon run -l targets.txt
 ```
 
@@ -166,16 +168,56 @@ Available variables for command templates:
 - `{WORDLIST}` - Path to wordlist
 - `{OUTPUT_DIR}` - Output directory
 - `{ID}` - Unique session ID
+- `{DOMAIN_LIST}` - Path to auto-generated domains list file (for multi-target scans)
+
+### Tools that Support Domain Lists
+
+Some tools can process multiple domains from a file. Use `use_domain_list: true` in your config:
+
+```yaml
+tools:
+  gowitness:
+    enabled: true
+    tmux_prefix: "gowitness_"
+    commands:
+      - name: "multi-urls"
+        description: "Screenshot multiple URLs"
+        command: "gowitness file -f {DOMAIN_LIST} --threads 10 --write-db"
+        wordlist: ""
+        use_domain_list: true  # This command will use the domains.txt file
+```
 
 ## Output Structure
 
+### Single Target Scan
 ```
 ~/trident-output/
-└── testphp.vulnweb.com_20251021_153045/
-    ├── ffuf-testphp.vulnweb.com-content.json
-    ├── ffuf-testphp.vulnweb.com-php.json
-    ├── gobuster-testphp.vulnweb.com-dirs.txt
-    └── commands.md
+└── example.com_20251022_153045/
+    ├── commands.md                              # Detailed markdown with session info
+    ├── commands.txt                             # Plain text commands (copy-paste ready)
+    ├── ffuf-example.com-content.json
+    ├── ffuf-example.com-quickhits.json
+    ├── gobuster-example.com-dirs.txt
+    ├── feroxbuster-example.com-fast.txt
+    └── gowitness-screenshots/
+        ├── screenshot-example.com.png
+        └── gowitness.sqlite3
+```
+
+### Multiple Targets Scan
+```
+~/trident-output/
+└── multi-target_20251022_153045/
+    ├── commands.md                              # All commands for all targets
+    ├── commands.txt                             # Copy-paste ready commands
+    ├── domains.txt                              # Auto-generated domain list
+    ├── ffuf-target1.com-content.json
+    ├── ffuf-target2.com-content.json
+    ├── gobuster-target1.com-dirs.txt
+    └── gowitness-screenshots/                   # Screenshots from all targets
+        ├── screenshot-target1.com.png
+        ├── screenshot-target2.com.png
+        └── gowitness.sqlite3
 ```
 
 ## Examples
@@ -205,6 +247,27 @@ trident-recon run -u https://target.com --tools ffuf
 
 # Skip vulnerability scanning
 trident-recon run -u https://target.com --skip nuclei,sqlmap
+
+# Only take screenshots with gowitness
+trident-recon run -l urls.txt --tools gowitness
+```
+
+### Using Generated Commands
+
+After running `generate` or `run`, you get two files:
+
+**1. commands.md** - Detailed documentation with:
+- Session IDs for each command
+- Full command with context
+- Instructions for attaching to sessions
+- Output file locations
+
+**2. commands.txt** - One command per line, ready to copy-paste:
+```bash
+# Just copy and paste the entire file!
+tmux new-session -d -s "ffuf_abc123" bash -c "ffuf -u http://example.com/FUZZ ..."
+tmux new-session -d -s "gobuster_def456" bash -c "gobuster dir -u http://example.com ..."
+tmux new-session -d -s "gowitness_ghi789" bash -c "gowitness file -f domains.txt ..."
 ```
 
 ## Development
@@ -236,12 +299,29 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 [@bc0d3](https://github.com/bc0d3)
 
+## Supported Tools
+
+Trident Recon comes pre-configured with optimized commands for:
+
+### Fuzzing & Directory Discovery
+- **ffuf** - Fast web fuzzer with auto-calibration
+- **gobuster** - Directory/file & DNS busting tool
+- **dirsearch** - Web path scanner with recursive scanning
+- **feroxbuster** - Fast content discovery with auto-tune
+
+### Visual Reconnaissance
+- **gowitness** - Web screenshot utility with full-page capture
+
+All tools include intelligent rate limiting, multi-threading, and optimized wordlists for maximum efficiency.
+
 ## Acknowledgments
 
 Built for the bug bounty community. Special thanks to all the amazing tool developers:
-- ffuf, gobuster, dirsearch, feroxbuster
-- httpx, nuclei, subfinder
-- And many more!
+- [ffuf](https://github.com/ffuf/ffuf) by @joohoi
+- [gobuster](https://github.com/OJ/gobuster) by @OJ
+- [dirsearch](https://github.com/maurosoria/dirsearch) by @maurosoria
+- [feroxbuster](https://github.com/epi052/feroxbuster) by @epi052
+- [gowitness](https://github.com/sensepost/gowitness) by @sensepost
 
 ---
 
