@@ -79,6 +79,9 @@ func (g *Generator) generateSession(toolName string, toolConfig config.ToolConfi
 		}
 	}
 
+	// Build dynamic headers map from config
+	headersMap := BuildHeadersMap(g.Config.Headers)
+
 	// Create replacements
 	replacements := Replacements{
 		URL:        url,
@@ -88,6 +91,7 @@ func (g *Generator) generateSession(toolName string, toolConfig config.ToolConfi
 		OutputDir:  g.OutputDir,
 		ID:         id,
 		DomainList: g.DomainListFile,
+		Headers:    headersMap,
 	}
 
 	// Replace template variables

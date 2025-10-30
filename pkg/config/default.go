@@ -36,6 +36,34 @@ const DefaultConfig = `# Trident Recon Configuration File - OPTIMIZED FOR BUG BO
 #                  Only available when using -l flag with multiple targets
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# HEADER VARIABLES - Dynamic based on your config.yaml:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Individual Headers (any header from your config):
+# {HEADER-User-Agent}      - Replaced with: -H "User-Agent: Mozilla/5.0..."
+# {HEADER-Accept}          - Replaced with: -H "Accept: */*"
+# {HEADER-Accept-Language} - Replaced with: -H "Accept-Language: en-US,en;q=0.9"
+# {HEADER-Accept-Encoding} - Replaced with: -H "Accept-Encoding: gzip, deflate"
+# {HEADER-X-Bug-Bounty}    - Replaced with: -H "X-Bug-Bounty: hackeroneUser"
+# {HEADER-<any-name>}      - Any header you add to config.yaml automatically works!
+#
+# Grouped Headers:
+# {HEADERS-ALL}     - ALL headers (default + custom) combined
+#                     Example: -H "User-Agent: ..." -H "Accept: ..." -H "X-Bug-Bounty: ..."
+#
+# {HEADERS-DEFAULT} - Only default headers from headers.default section
+#                     Example: -H "User-Agent: ..." -H "Accept: ..." -H "Accept-Language: ..."
+#
+# {HEADERS-CUSTOM}  - Only custom headers from headers.custom section
+#                     Example: -H "X-Bug-Bounty: hackeroneUser"
+#
+# Usage Examples:
+#   ffuf -u {URL}/FUZZ {HEADERS-ALL} -w wordlist.txt
+#   gobuster dir -u {URL} {HEADER-User-Agent} {HEADER-X-Bug-Bounty} -w wordlist.txt
+#   curl {URL} {HEADERS-DEFAULT} -o output.txt
+#   nuclei -u {URL} {HEADER-Accept} -H "Custom: value"
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # USAGE EXAMPLES:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
@@ -84,7 +112,9 @@ headers:
     Accept-Language: "en-US,en;q=0.9"
     Accept-Encoding: "gzip, deflate"
   custom:
-    - "X-Bug-Bounty: true"
+    - "X-Bug-Bounty: hackeroneUser"
+    # Add any custom headers here. Each will be available as {HEADER-name}
+    # Example: - "X-Custom-Header: value"
 
 wordlists:
   common: /usr/share/wordlists/dirb/common.txt
@@ -115,57 +145,57 @@ tools:
     commands:
       - name: "quickhits"
         description: "Fast initial scan with quickhits wordlist"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-quickhits.json -of json -ac"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-quickhits.json -of json -ac"
         wordlist: quickhits
 
       - name: "content-discovery"
         description: "Content discovery with intelligent filtering"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404,403 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-content.json -of json -t 100 -rate 200 -ac -recursion -recursion-depth 2"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404,403 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-content.json -of json -ac -recursion -recursion-depth 2"
         wordlist: raft-medium-dirs
 
       - name: "content-discovery-big"
         description: "Extensive content discovery with large wordlist"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -t 80 -rate 150 -ac"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -ac"
         wordlist: raft-large-dirs
 
       - name: "multi-extension-scan"
         description: "Multi-extension file discovery"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old,.zip,.tar.gz,.sql,.db,.config,.env,.log -o {OUTPUT_DIR}/ffuf-{DOMAIN}-extensions.json -of json -t 100 -rate 200"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old,.zip,.tar.gz,.sql,.db,.config,.env,.log -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-extensions.json -of json -ac"
         wordlist: raft-medium-files
 
       - name: "sensitive-files"
         description: "Search for sensitive files and backups"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -e .bak,.backup,.old,.swp,~,.git,.env,.sql,.db,.config,.log -o {OUTPUT_DIR}/ffuf-{DOMAIN}-sensitive.json -of json -t 100"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .bak,.backup,.old,.swp,~,.git,.env,.sql,.db,.config,.log -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-sensitive.json -of json -ac"
         wordlist: backups
 
       - name: "api-endpoints"
         description: "API endpoint discovery with versioning"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -H 'Content-Type: application/json' -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -H 'Content-Type: application/json' -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json -ac"
         wordlist: api
 
       - name: "swagger-graphql"
         description: "Search for API documentation endpoints"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-apidocs.json -of json"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-apidocs.json -of json -ac"
         wordlist: swagger
 
       - name: "parameter-fuzzing"
         description: "GET parameter fuzzing"
-        command: "ffuf -u {URL}?FUZZ=test -w {WORDLIST} -mc all -fc 404 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-params.json -of json"
+        command: "ffuf -u {URL}?FUZZ=test -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-params.json -of json -ac"
         wordlist: params
 
       - name: "vhost-enumeration"
         description: "Virtual host enumeration"
-        command: "ffuf -u {URL} -w {WORDLIST} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhosts.json -of json"
+        command: "ffuf -u {URL} -w {WORDLIST} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhosts.json -of json -ac"
         wordlist: subdomain-top5000
 
       - name: "recursive-deep"
         description: "Deep recursive scan with auto-calibration"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -fc 404 -recursion -recursion-depth 3 -e .php,.html,.js -t 80 -rate 150 -ac -o {OUTPUT_DIR}/ffuf-{DOMAIN}-deep.json -of json"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.html,.js -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-deep.json -of json -ac -recursion -recursion-depth 3"
         wordlist: raft-medium-words
 
       - name: "bypass-403"
         description: "Attempt to bypass 403 forbidden responses"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -mc all -t 100 -H 'X-Original-URL: /FUZZ' -H 'X-Rewrite-URL: /FUZZ' -o {OUTPUT_DIR}/ffuf-{DOMAIN}-403bypass.json -of json"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -H 'X-Original-URL: /FUZZ' -H 'X-Rewrite-URL: /FUZZ' -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-403bypass.json -of json -ac"
         wordlist: common
 
   gobuster:
