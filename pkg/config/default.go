@@ -143,60 +143,123 @@ tools:
     enabled: true
     tmux_prefix: "ffuf_"
     commands:
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # DISCOVERY RÁPIDO - Fast initial scans with small wordlists
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: "quickhits"
-        description: "Fast initial scan with quickhits wordlist"
+        description: "Fast scan with quickhits wordlist (immediate findings)"
         command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-quickhits.json -of json -ac"
         wordlist: quickhits
 
-      - name: "content-discovery"
-        description: "Content discovery with intelligent filtering"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404,403 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-content.json -of json -ac -recursion -recursion-depth 2"
+      - name: "common"
+        description: "Common paths and files (dirb common)"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-common.json -of json -ac"
+        wordlist: common
+
+      - name: "raft-small-dirs"
+        description: "Raft small directories wordlist"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-small-dirs.json -of json -ac"
+        wordlist: raft-small-dirs
+
+      - name: "raft-small-words"
+        description: "Raft small words wordlist"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-small-words.json -of json -ac"
+        wordlist: raft-small-words
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # DISCOVERY MEDIO - Medium depth scans with balanced wordlists
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "raft-medium-dirs"
+        description: "Raft medium directories with recursion"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404,403 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-medium-dirs.json -of json -t 100 -rate 200 -ac -recursion -recursion-depth 2"
         wordlist: raft-medium-dirs
 
-      - name: "content-discovery-big"
-        description: "Extensive content discovery with large wordlist"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -ac"
-        wordlist: raft-large-dirs
+      - name: "raft-medium-words"
+        description: "Raft medium words with extensions"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.html,.js -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-medium-words.json -of json -ac"
+        wordlist: raft-medium-words
 
-      - name: "multi-extension-scan"
-        description: "Multi-extension file discovery"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old,.zip,.tar.gz,.sql,.db,.config,.env,.log -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-extensions.json -of json -ac"
+      - name: "raft-medium-files"
+        description: "Raft medium files with multiple extensions"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old,.zip,.tar.gz,.sql,.db,.config,.env,.log -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-medium-files.json -of json"
         wordlist: raft-medium-files
 
-      - name: "sensitive-files"
-        description: "Search for sensitive files and backups"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .bak,.backup,.old,.swp,~,.git,.env,.sql,.db,.config,.log -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-sensitive.json -of json -ac"
-        wordlist: backups
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # DISCOVERY PROFUNDO - Deep scans with large wordlists
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "big"
+        description: "Big wordlist comprehensive scan"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-big.json -of json -ac"
+        wordlist: big
 
+      - name: "raft-large-dirs"
+        description: "Raft large directories extensive scan"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-large-dirs.json -of json -t 80 -rate 150 -ac"
+        wordlist: raft-large-dirs
+
+      - name: "raft-large-files"
+        description: "Raft large files with extensions"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.asp,.aspx,.jsp,.html,.js,.txt,.json,.xml,.bak,.old -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-raft-large-files.json -of json"
+        wordlist: raft-large-files
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # API DISCOVERY - API endpoints and documentation
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: "api-endpoints"
-        description: "API endpoint discovery with versioning"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -H 'Content-Type: application/json' -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json -ac"
+        description: "API endpoints discovery (main list)"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -H 'Content-Type: application/json' -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api.json -of json"
         wordlist: api
 
-      - name: "swagger-graphql"
-        description: "Search for API documentation endpoints"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-apidocs.json -of json -ac"
+      - name: "api-endpoints-v2"
+        description: "API endpoints discovery (extended list)"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -H 'Content-Type: application/json' -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-api-v2.json -of json"
+        wordlist: api-v2
+
+      - name: "swagger-docs"
+        description: "Swagger/OpenAPI documentation discovery"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-swagger.json -of json"
         wordlist: swagger
 
+      - name: "graphql-endpoints"
+        description: "GraphQL endpoints discovery"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -H 'Content-Type: application/json' -mc all -fc 404 -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-graphql.json -of json"
+        wordlist: graphql
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # FUZZING ESPECIALIZADO - Specialized fuzzing targets
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: "parameter-fuzzing"
         description: "GET parameter fuzzing"
         command: "ffuf -u {URL}?FUZZ=test -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -fs 0 -t 100 -rate 200 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-params.json -of json -ac"
         wordlist: params
 
-      - name: "vhost-enumeration"
-        description: "Virtual host enumeration"
-        command: "ffuf -u {URL} -w {WORDLIST} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhosts.json -of json -ac"
+      - name: "php-files"
+        description: "Common PHP filenames discovery"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-php.json -of json -ac"
+        wordlist: php
+
+      - name: "backup-files"
+        description: "Backup and sensitive files discovery"
+        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .bak,.backup,.old,.swp,~,.git,.env,.sql,.db,.config,.log -t 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-backups.json -of json"
+        wordlist: backups
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # VHOST ENUMERATION - Virtual host and subdomain discovery
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "vhost-top5k"
+        description: "Virtual host enumeration (top 5000)"
+        command: "ffuf -u {URL} -w {WORDLIST} {HEADERS-ALL} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhost-top5k.json -of json"
         wordlist: subdomain-top5000
 
-      - name: "recursive-deep"
-        description: "Deep recursive scan with auto-calibration"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} {HEADERS-ALL} -mc all -fc 404 -e .php,.html,.js -t 80 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-deep.json -of json -ac -recursion -recursion-depth 3"
-        wordlist: raft-medium-words
+      - name: "vhost-top20k"
+        description: "Virtual host enumeration (top 20000)"
+        command: "ffuf -u {URL} -w {WORDLIST} {HEADERS-ALL} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhost-top20k.json -of json"
+        wordlist: subdomain-top20000
 
-      - name: "bypass-403"
-        description: "Attempt to bypass 403 forbidden responses"
-        command: "ffuf -u {URL}/FUZZ -w {WORDLIST} -H 'X-Original-URL: /FUZZ' -H 'X-Rewrite-URL: /FUZZ' -mc all -fc 404 -t 100 -rate 100 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-403bypass.json -of json -ac"
-        wordlist: common
+      - name: "vhost-namelist"
+        description: "Virtual host enumeration (namelist)"
+        command: "ffuf -u {URL} -w {WORDLIST} {HEADERS-ALL} -H 'Host: FUZZ.{DOMAIN}' -mc all -fc 404 -fs 0 -t 100 -rate 150 -o {OUTPUT_DIR}/ffuf-{DOMAIN}-vhost-namelist.json -of json"
+        wordlist: vhosts
 
   gobuster:
     enabled: true
