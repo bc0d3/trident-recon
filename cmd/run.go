@@ -76,21 +76,22 @@ func runRun(cmd *cobra.Command, args []string) error {
 }
 
 func runForTarget(cfg *config.Config, target, stateDir string) error {
+	// Parse URL to get domain
+	_, domain, err := utils.ParseURL(target)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	domain = utils.SanitizeDomain(domain)
+
 	// Determine output directory
 	var outDir string
 	if outputDir != "" {
-		outDir = utils.ExpandPath(outputDir)
+		// User specified output directory: outputDir/domain/
+		outDir = filepath.Join(utils.ExpandPath(outputDir), domain)
 	} else {
-		// Parse URL to get domain
-		_, domain, err := utils.ParseURL(target)
-		if err != nil {
-			return fmt.Errorf("invalid URL: %w", err)
-		}
-		domain = utils.SanitizeDomain(domain)
-
-		// Generate timestamped directory
+		// No output specified: use domain only
 		baseDir := utils.ExpandPath(cfg.Global.OutputDir)
-		outDir = utils.GenerateOutputDir(baseDir, domain)
+		outDir = filepath.Join(baseDir, domain)
 	}
 
 	// Create output directory
@@ -118,7 +119,7 @@ func runForTarget(cfg *config.Config, target, stateDir string) error {
 	}
 
 	markdown := mdGen.Generate()
-	mdPath := filepath.Join(outDir, "commands.md")
+	mdPath := filepath.Join(outDir, "comandos.md")
 	if err := utils.WriteFile(mdPath, markdown); err != nil {
 		return fmt.Errorf("failed to write markdown: %w", err)
 	}
@@ -131,7 +132,7 @@ func runForTarget(cfg *config.Config, target, stateDir string) error {
 	}
 
 	plainText := txtGen.Generate()
-	txtPath := filepath.Join(outDir, "commands.txt")
+	txtPath := filepath.Join(outDir, "comandos.txt")
 	if err := utils.WriteFile(txtPath, plainText); err != nil {
 		return fmt.Errorf("failed to write plain text commands: %w", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/bc0d3/trident-recon/pkg/config"
-	"github.com/bc0d3/trident-recon/pkg/executor"
 	"github.com/bc0d3/trident-recon/pkg/generator"
 	"github.com/bc0d3/trident-recon/pkg/utils"
 	"github.com/spf13/cobra"
@@ -75,21 +74,22 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 }
 
 func generateForTarget(cfg *config.Config, target string, domainListFile string) error {
+	// Parse URL to get domain
+	_, domain, err := utils.ParseURL(target)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	domain = utils.SanitizeDomain(domain)
+
 	// Determine output directory
 	var outDir string
 	if outputDir != "" {
-		outDir = utils.ExpandPath(outputDir)
+		// User specified output directory: outputDir/domain/
+		outDir = filepath.Join(utils.ExpandPath(outputDir), domain)
 	} else {
-		// Parse URL to get domain
-		_, domain, err := utils.ParseURL(target)
-		if err != nil {
-			return fmt.Errorf("invalid URL: %w", err)
-		}
-		domain = utils.SanitizeDomain(domain)
-
-		// Generate timestamped directory
+		// No output specified: use domain only
 		baseDir := utils.ExpandPath(cfg.Global.OutputDir)
-		outDir = utils.GenerateOutputDir(baseDir, domain)
+		outDir = filepath.Join(baseDir, domain)
 	}
 
 	// Create output directory
@@ -116,7 +116,7 @@ func generateForTarget(cfg *config.Config, target string, domainListFile string)
 	markdown := mdGen.Generate()
 
 	// Save markdown file
-	mdPath := filepath.Join(outDir, "commands.md")
+	mdPath := filepath.Join(outDir, "comandos.md")
 	if err := utils.WriteFile(mdPath, markdown); err != nil {
 		return fmt.Errorf("failed to write markdown: %w", err)
 	}
@@ -131,7 +131,7 @@ func generateForTarget(cfg *config.Config, target string, domainListFile string)
 	plainText := txtGen.Generate()
 
 	// Save plain text file
-	txtPath := filepath.Join(outDir, "commands.txt")
+	txtPath := filepath.Join(outDir, "comandos.txt")
 	if err := utils.WriteFile(txtPath, plainText); err != nil {
 		return fmt.Errorf("failed to write plain text commands: %w", err)
 	}
@@ -169,23 +169,21 @@ func getTargets() ([]string, error) {
 }
 
 func generateForMultipleTargets(cfg *config.Config, targets []string) error {
-	// Determine output directory
-	var outDir string
+	// Determine base output directory
+	var baseOutDir string
 	if outputDir != "" {
-		outDir = utils.ExpandPath(outputDir)
+		baseOutDir = utils.ExpandPath(outputDir)
 	} else {
-		// Use base directory with timestamp
-		baseDir := utils.ExpandPath(cfg.Global.OutputDir)
-		outDir = utils.GenerateOutputDir(baseDir, "multi-target")
+		baseOutDir = utils.ExpandPath(cfg.Global.OutputDir)
 	}
 
-	// Create output directory
-	if err := utils.EnsureDir(outDir); err != nil {
+	// Create base output directory
+	if err := utils.EnsureDir(baseOutDir); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Create domains list file
-	domainListFile := filepath.Join(outDir, "domains.txt")
+	// Create domains list file in base directory
+	domainListFile := filepath.Join(baseOutDir, "domains.txt")
 	var domains []string
 	for _, target := range targets {
 		_, domain, err := utils.ParseURL(target)
@@ -202,13 +200,27 @@ func generateForMultipleTargets(cfg *config.Config, targets []string) error {
 
 	utils.PrintSuccess(fmt.Sprintf("Created domains file: %s", domainListFile))
 
-	// Generate commands using the first target as template
-	var allSessions []executor.Session
-
+	// Process each target in its own subdirectory
 	for i, target := range targets {
 		utils.PrintInfo(fmt.Sprintf("[%d/%d] Processing target: %s", i+1, len(targets), target))
 
-		gen := generator.New(cfg, target, outDir)
+		// Parse domain for this target
+		_, domain, err := utils.ParseURL(target)
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to parse %s: %v", target, err))
+			continue
+		}
+		domain = utils.SanitizeDomain(domain)
+
+		// Create subdirectory for this target
+		targetOutDir := filepath.Join(baseOutDir, domain)
+		if err := utils.EnsureDir(targetOutDir); err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to create directory for %s: %v", target, err))
+			continue
+		}
+
+		// Generate commands for this target
+		gen := generator.New(cfg, target, targetOutDir)
 		gen.SetDomainListFile(domainListFile)
 
 		sessions, err := gen.Generate(toolsFilter, skipTools)
@@ -217,50 +229,44 @@ func generateForMultipleTargets(cfg *config.Config, targets []string) error {
 			continue
 		}
 
-		allSessions = append(allSessions, sessions...)
+		// Generate markdown for this target
+		mdGen := generator.MarkdownGenerator{
+			Target:    target,
+			OutputDir: targetOutDir,
+			Sessions:  sessions,
+		}
+
+		markdown := mdGen.Generate()
+		mdPath := filepath.Join(targetOutDir, "comandos.md")
+		if err := utils.WriteFile(mdPath, markdown); err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to write markdown for %s: %v", target, err))
+			continue
+		}
+
+		// Generate plain text commands for this target
+		txtGen := generator.PlainTextGenerator{
+			Sessions: sessions,
+		}
+
+		plainText := txtGen.Generate()
+		txtPath := filepath.Join(targetOutDir, "comandos.txt")
+		if err := utils.WriteFile(txtPath, plainText); err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to write commands for %s: %v", target, err))
+			continue
+		}
+
+		utils.PrintSuccess(fmt.Sprintf("Generated %d command(s) for %s", len(sessions), domain))
+		utils.PrintInfo(fmt.Sprintf("  Markdown: %s", mdPath))
+		utils.PrintInfo(fmt.Sprintf("  Commands: %s", txtPath))
+		fmt.Println()
 	}
 
-	utils.PrintSuccess(fmt.Sprintf("Generated %d command(s)", len(allSessions)))
-
-	// Generate markdown
-	mdGen := generator.MarkdownGenerator{
-		Target:    fmt.Sprintf("%d targets", len(targets)),
-		OutputDir: outDir,
-		Sessions:  allSessions,
-	}
-
-	markdown := mdGen.Generate()
-
-	// Save markdown file
-	mdPath := filepath.Join(outDir, "commands.md")
-	if err := utils.WriteFile(mdPath, markdown); err != nil {
-		return fmt.Errorf("failed to write markdown: %w", err)
-	}
-
-	utils.PrintSuccess(fmt.Sprintf("Markdown saved to: %s", mdPath))
-
-	// Generate plain text commands
-	txtGen := generator.PlainTextGenerator{
-		Sessions: allSessions,
-	}
-
-	plainText := txtGen.Generate()
-
-	// Save plain text file
-	txtPath := filepath.Join(outDir, "commands.txt")
-	if err := utils.WriteFile(txtPath, plainText); err != nil {
-		return fmt.Errorf("failed to write plain text commands: %w", err)
-	}
-
-	utils.PrintSuccess(fmt.Sprintf("Plain text commands saved to: %s", txtPath))
-	fmt.Println()
 	fmt.Println("📋 Quick Reference:")
-	fmt.Printf("   Output directory: %s\n", outDir)
+	fmt.Printf("   Base output directory: %s\n", baseOutDir)
 	fmt.Printf("   Domains file: %s\n", domainListFile)
-	fmt.Printf("   Markdown file: %s\n", mdPath)
-	fmt.Printf("   Commands file (copy-paste): %s\n", txtPath)
-	fmt.Printf("   Total commands: %d\n", len(allSessions))
+	fmt.Printf("   Total targets: %d\n", len(targets))
 	fmt.Println()
+	utils.PrintInfo("Each target has its own subdirectory with comandos.md and comandos.txt")
 	utils.PrintInfo("Review the files and execute manually or use 'trident-recon run'")
 
 	return nil

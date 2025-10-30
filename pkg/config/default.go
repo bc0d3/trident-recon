@@ -3,6 +3,75 @@ package config
 // DefaultConfig returns a default configuration template
 const DefaultConfig = `# Trident Recon Configuration File - OPTIMIZED FOR BUG BOUNTY 2025
 # Save this at ~/.config/trident-recon/config.yaml
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TEMPLATE VARIABLES - Available in all command templates:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# {URL}          - Full target URL with protocol
+#                  Example: http://example.com or https://api.example.com
+#
+# {DOMAIN}       - Extracted domain from URL (without port)
+#                  Example: example.com (even if URL is http://example.com:8080)
+#
+# {PROTOCOL}     - Protocol extracted from URL
+#                  Example: http or https
+#
+# {WORDLIST}     - Full path to the wordlist file specified in command
+#                  Example: /usr/share/seclists/Discovery/Web-Content/common.txt
+#                  This is resolved from the wordlist name defined below
+#
+# {OUTPUT_DIR}   - Output directory for this scan
+#                  Single target: ~/trident-output/example.com/
+#                  With -o flag: /custom/path/example.com/
+#                  Multiple targets: ~/trident-output/example.com/, ~/trident-output/google.com/, etc.
+#
+# {ID}           - Unique session identifier (12 characters by default)
+#                  Example: a1b2c3d4e5f6
+#                  Generated using MD5 hash of tool+command+domain+timestamp
+#
+# {DOMAIN_LIST}  - Path to domains.txt file (only for multi-target scans)
+#                  Example: ~/trident-output/domains.txt
+#                  Contains list of all domains being scanned (one per line)
+#                  Only available when using -l flag with multiple targets
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# USAGE EXAMPLES:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Single target:
+#   trident-recon generate -u http://example.com
+#   → Output: ~/trident-output/example.com/comandos.md
+#   → Output: ~/trident-output/example.com/comandos.txt
+#
+# Single target with custom output:
+#   trident-recon generate -u http://example.com -o /tmp/my-scan
+#   → Output: /tmp/my-scan/example.com/comandos.md
+#   → Output: /tmp/my-scan/example.com/comandos.txt
+#
+# Multiple targets:
+#   trident-recon generate -l targets.txt
+#   → Output: ~/trident-output/example.com/comandos.md
+#   → Output: ~/trident-output/google.com/comandos.md
+#   → Output: ~/trident-output/domains.txt (shared list)
+#
+# Multiple targets with custom output:
+#   trident-recon generate -l targets.txt -o /tmp/my-scan
+#   → Output: /tmp/my-scan/example.com/comandos.md
+#   → Output: /tmp/my-scan/google.com/comandos.md
+#   → Output: /tmp/my-scan/domains.txt
+#
+# Filter specific tools:
+#   trident-recon generate -u http://example.com --tools ffuf,gobuster
+#
+# Skip specific tools:
+#   trident-recon generate -u http://example.com --skip dirsearch,feroxbuster
+#
+# Run commands (execute in tmux):
+#   trident-recon run -u http://example.com
+#   trident-recon run -l targets.txt -o ~/scans/project-name
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 global:
   output_dir: ~/trident-output
@@ -246,27 +315,6 @@ tools:
         command: "feroxbuster -u {URL} -w {WORDLIST} -o {OUTPUT_DIR}/feroxbuster-{DOMAIN}-thorough.txt -t 80 -k -d 3 --auto-tune --collect-words --extract-links --collect-backups --rate-limit 150 -x php,html,js,txt,json,xml,bak,old -q"
         wordlist: raft-large-files
 
-  gowitness:
-    enabled: true
-    tmux_prefix: "gowitness_"
-    commands:
-      - name: "single-url"
-        description: "Screenshot single URL with full page capture"
-        command: "gowitness scan single --url {URL} --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png --screenshot-fullpage --write-db --timeout 15"
-        wordlist: ""
-
-      - name: "multi-urls"
-        description: "Screenshot multiple URLs from domain list"
-        command: "gowitness file -f {DOMAIN_LIST} --threads 10 --write-db --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png --timeout 15"
-        wordlist: ""
-        use_domain_list: true
-
-      - name: "multi-urls-fullpage"
-        description: "Screenshot multiple URLs with full page and error logging"
-        command: "gowitness file -f {DOMAIN_LIST} --threads 20 --timeout 15 --write-db --screenshot-fullpage --log-scan-errors --screenshot-path {OUTPUT_DIR}/gowitness-screenshots --screenshot-format png"
-        wordlist: ""
-        use_domain_list: true
-
 # Notes:
 # - Todos los comandos incluyen rate limiting o thread control para evitar bloqueos
 # - Se usa auto-calibration (-ac en ffuf) y auto-tune (en feroxbuster) cuando es posible
@@ -278,6 +326,4 @@ tools:
 # - Feroxbuster usa --collect-words y --extract-links para descubrimiento inteligente
 # - Se incluyen extensiones críticas: .env, .git, .bak, .sql, .db, .config
 # - Los outputs están en formato JSON cuando es posible para parsing automatizado
-# - Gowitness soporta screenshots con --screenshot-fullpage y --write-db
-# - Para múltiples URLs, usar -l flag y gowitness usará {DOMAIN_LIST}
 `
